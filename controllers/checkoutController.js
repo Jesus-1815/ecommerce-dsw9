@@ -22,6 +22,7 @@ async function getPayPalAccessToken() {
   const data = await res.json();
   return data.access_token;
 }
+
 const checkoutController = {
   getCheckoutPage: (req, res) => {
     if (!req.session.cart || req.session.cart.items.length === 0)
@@ -40,16 +41,20 @@ const checkoutController = {
         email:     req.body.email,     address:   req.body.address,
         city:      req.body.city,      province:  req.body.province,
         zip:       req.body.zip || '', phone:     req.body.phone,
-        total:     cart.totalPrice,    status:    'pending'
+        total:     cart.totalPrice,    status:    'pending',
+        user_id:   req.session.userId || null   // null si el usuario no está autenticado
       });
-            for (const item of cart.items) {
+
+      for (const item of cart.items) {
         await OrderItem.create({
-          OrderId:   order.id,
-          ProductId: item.product.id,
-          quantity:  item.quantity,
-          price:     item.product.price
+          order_id:   order.id,
+          product_id: item.product.id,
+          store_id:   item.product.store_id || null,
+          quantity:   item.quantity,
+          price:      item.product.price
         });
       }
+
       req.session.pendingOrderId = order.id;
       // Renderiza la vista con los botones de PayPal
       res.render('payment', {
@@ -61,7 +66,8 @@ const checkoutController = {
       res.status(500).render('error', { title: 'Error', message: 'Error al procesar el pedido.' });
     }
   },
-   // 2. El JS de payment.ejs llama a este endpoint para crear la orden en PayPal
+
+  // 2. El JS de payment.ejs llama a este endpoint para crear la orden en PayPal
   createPayPalOrder: async (req, res) => {
     try {
       const order       = await Order.findByPk(parseInt(req.body.orderId));
@@ -84,6 +90,7 @@ const checkoutController = {
       res.status(500).json({ error: 'Error al crear orden PayPal' });
     }
   },
+
   // 3. El JS de payment.ejs llama aquí cuando el usuario aprueba en PayPal
   capturePayPalOrder: async (req, res) => {
     try {
@@ -112,7 +119,8 @@ const checkoutController = {
       res.status(500).json({ error: 'Error al capturar el pago' });
     }
   },
-    handleCancelPayment: async (req, res) => {
+
+  handleCancelPayment: async (req, res) => {
     try {
       const order = await Order.findByPk(parseInt(req.query.orderId));
       if (order) await order.update({ status: 'cancelled' });
