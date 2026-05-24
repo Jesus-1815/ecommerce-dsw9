@@ -1,5 +1,7 @@
 // app.js — reemplaza el Hello World
 require('dotenv').config();
+const customerRoutes = require('./routes/customer');
+const storeAdminRoutes = require('./routes/storeAdmin');
 const userAuthRoutes = require('./routes/userAuth');
 const express      = require('express');
 const path         = require('path');
@@ -18,6 +20,8 @@ const { attachLocals } = require('./middleware/authMiddleware');
 const app  = express();
 const port = process.env.PORT || 3000;
 
+app.use('/customer', customerRoutes);
+app.use('/store-admin', storeAdminRoutes);
 app.use('/user', userAuthRoutes);
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
